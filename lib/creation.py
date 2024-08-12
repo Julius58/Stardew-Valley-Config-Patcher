@@ -19,8 +19,8 @@ def _scan_for_configs_(configs_folder: str) -> list[str]:
     return configs
 
 def create_patch_file(configs_folder: str, config: PatcherConfig):
-    patch_version = config.patch_version + 1
     patches = load_patches(config)
+    patch_version = list(sorted(patches.keys()))[-1] + 1 if len(patches) > 0 else 0
 
     old_patches_map: dict[str, list[Patch]] = {}
 

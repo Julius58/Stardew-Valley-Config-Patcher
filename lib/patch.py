@@ -6,7 +6,7 @@ from json import load as json_load
 from json import loads as json_loads
 from os import listdir, makedirs
 from os.path import exists as path_exists
-from os.path import isfile
+from os.path import isfile, dirname
 from os.path import join as path_join
 from re import compile as regex_compile
 from typing import Any, Tuple
@@ -19,6 +19,7 @@ def PATCH_FOLDER(config: PatcherConfig) -> str:
     return path_join(config.stardew_valley, PATCH_FOLDER_NAME)
     
 def _config_diff_(config: dict, patch: dict) -> Tuple[dict, dict, dict]:
+    #region Diff
     def diff(config: dict, patch: dict) -> Tuple[dict | None, dict | None, dict | None]:
         create_on_missing, overwrite, remove = dict(), dict(), dict()
 
@@ -31,7 +32,7 @@ def _config_diff_(config: dict, patch: dict) -> Tuple[dict, dict, dict]:
                     overwrite[key] = config_value
                 else:
                     if isinstance(config_value, dict): # Recursive scan
-                        con, o , r = _config_diff_(config_value, patch_value)
+                        con, o , r = diff(config_value, patch_value)
                         # Update dictionaries
                         if con is not None:
                             create_on_missing[key] = con
@@ -44,16 +45,20 @@ def _config_diff_(config: dict, patch: dict) -> Tuple[dict, dict, dict]:
                             overwrite[key] = config_value
 
         # Check for removed key-value pairs
-        for key in set(patch.keys()).difference(set(config_value.keys())):
+        for key in set(patch.keys()).difference(set(config.keys())):
             remove[key] = {}
         
         return create_on_missing if len(create_on_missing) > 0 else None, overwrite if len(overwrite) > 0 else None, remove if len(remove) > 0 else None
+    #endregion Diff
     
     con, o, r = diff(config, patch)
 
-    assert isinstance(con, dict)
-    assert isinstance(o, dict)
-    assert isinstance(r, dict)
+    if not isinstance(con, dict):
+        con = {}
+    if not isinstance(o, dict):
+        o = {}
+    if not isinstance(r, dict):
+        r = {}
 
     return con, o, r
 
@@ -75,8 +80,7 @@ class Patch():
     def _remove(self) -> dict:
         return json_loads(self.remove)
 
-    def __init__(self, args: list[str] | Tuple[str, str, str]) -> None:
-        assert isinstance(args, (list, tuple))
+    def __init__(self, *args: str) -> None:
         assert len(args) == 3
 
         self.create_on_missing = args[0]
@@ -88,11 +92,11 @@ class Patch():
 
     @classmethod
     def from_dicts(cls, create_on_missing: dict = {}, overwrite: dict = {}, remove: dict = {}) -> 'Patch':
-        return cls((
+        return cls(
             json_dumps(create_on_missing),
             json_dumps(overwrite),
             json_dumps(remove),
-        ))
+        )
 
     @classmethod
     def new_patch(cls, config_path: str, old_patches: list['Patch']) -> 'Patch | None':
@@ -183,17 +187,20 @@ class Patch():
         config = self._apply_(config)
         # TODO: add option to remove config files
 
-        with open(config_path, 'w') as f:
-            json_dump(config, f)
+        folder = dirname(config_path)
+        if not path_exists(folder):
+            makedirs(folder)
 
-@dataclass(frozen=True)
+        with open(config_path, 'w') as f:
+            json_dump(config, f, indent=2)
+
+@dataclass
 class PatchFile(dict[str, Patch]):
     FILENAME_TEMPLATE = 'v{version}.patch'
     FILENAME_PATTERN = r'^[vV](\d+)\.patch$'
     FILENAME_REGEX = regex_compile(FILENAME_PATTERN)
     version: int
-
-    # TODO:
+    
     def __init__(self, filename: str, config: PatcherConfig):
         if not (match := self.FILENAME_REGEX.match(filename)):
             raise ValueError(f'Patch file must be of pattern "{self.FILENAME_PATTERN}", put got "{filename}" instead.')
@@ -203,7 +210,7 @@ class PatchFile(dict[str, Patch]):
 
         version = int(match.group(1))
 
-        self.__setattr__('version', version)
+        self.version = version
 
         with open(filepath, 'r') as f:
             json = json_load(f)
