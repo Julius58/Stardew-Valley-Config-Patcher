@@ -21,6 +21,7 @@ def argparser() -> ArgumentParser:
     )
 
     argparser.add_argument("--create", action='store_true', default=False, help="Changes the mode to creating a new patch from all provided config files and old patches.")
+    argparser.add_argument("--close", action='store_true', default=False, help="Closes the script immediately after completion without waiting for user input.")
 
     return argparser
 
@@ -141,6 +142,9 @@ def main():
         patch(config_mod_path, patcher_config)
     
     patcher_config.save()
+
+    if not args.close:
+        _ = input("Press enter to close...")
 
 if __name__ == "__main__":
     main()

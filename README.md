@@ -31,9 +31,15 @@ To use the Config Patcher, run the script with the desired arguments. Below are 
 ### Arguments
 
 - `--create`
+
   - **Type**: `flag` (boolean)
   - **Default**: `False`
   - **Description**: Changes the mode to create a new patch file from all provided config files and old patches. If this flag is set, the script will generate a new patch file rather than applying existing patches.
+- `--close`
+
+  - **Type**: `flag` (boolean)
+  - **Default**: `False`
+  - **Description**: Closes the script immediately after completion without waiting for user input.
 
 ### Examples
 
