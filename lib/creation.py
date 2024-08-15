@@ -4,6 +4,7 @@ from os.path import relpath
 
 from lib.config import PatcherConfig
 from lib.patch import Patch, PatchFile, load_patches
+from lib.ui.console import ConsoleUserInterface
 
 
 def _scan_for_configs_(configs_folder: str) -> list[str]:
@@ -18,7 +19,7 @@ def _scan_for_configs_(configs_folder: str) -> list[str]:
 
     return configs
 
-def create_patch_file(configs_folder: str, config: PatcherConfig):
+def create_patch_file(configs_folder: str, config: PatcherConfig, cui: ConsoleUserInterface):
     patches = load_patches(config)
     patch_version = list(sorted(patches.keys()))[-1] + 1 if len(patches) > 0 else 0
 
@@ -30,7 +31,7 @@ def create_patch_file(configs_folder: str, config: PatcherConfig):
         for rel_config_path, value in patchfile.items():
             config_path = path_join(configs_folder, rel_config_path)
 
-            if version not in old_patches_map:
+            if config_path not in old_patches_map:
                 old_patches_map[config_path] = list()
             old_patches_map[config_path].append(value)
 
@@ -41,9 +42,10 @@ def create_patch_file(configs_folder: str, config: PatcherConfig):
     new_patches: dict[str, Patch] = {}
 
     for config_path, old_patches in old_patches_map.items():
-        patch = Patch.new_patch(config_path=config_path, old_patches=old_patches)
+        rel_config_path = relpath(config_path, configs_folder)
+
+        patch = Patch.new_patch(config_path=config_path, old_patches=old_patches, rel_path=rel_config_path, cui=cui)
         if patch is not None:
-            rel_config_path = relpath(config_path, configs_folder)
             new_patches[rel_config_path] = patch
 
     if len(new_patches) > 0:

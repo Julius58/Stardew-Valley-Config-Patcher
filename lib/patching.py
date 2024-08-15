@@ -15,7 +15,7 @@ def patch(config_mod_path: str, config: PatcherConfig):
         pardir,
         f'{basename(config_mod_path)}_{datetime.now().strftime('%Y-%m-%dT%H-%M')}'
     )
-    if isdir(backup_path):
+    if isdir(config_mod_path):
         make_archive(backup_path, 'zip', config_mod_path)
         print('Backup created successfully at: %s' % backup_path)
     #endregion Backup config_mod
