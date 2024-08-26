@@ -16,4 +16,4 @@ call .venv\Scripts\activate.bat
 
 REM Install required packages
 echo "Installing required packages"
-pip install -r requirements.txt
+pip install --require-virtualenv -r requirements.txt
