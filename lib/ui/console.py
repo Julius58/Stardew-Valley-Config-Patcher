@@ -10,6 +10,7 @@ from consolemenu import ConsoleMenu
 from consolemenu.items import SelectionItem
 
 from lib.config import PatcherConfig
+from lib.creation_config import PatchCreationConfig
 from lib.ui.items import (Direction, DirectionSelectionItem, InputItem,
                           ValidatorItem)
 from Typing import SCRIPT_ROOT
@@ -73,6 +74,7 @@ class _PatcherConfigCreationMenu(ConsoleMenu):
             item_name = menu._config_mod_regex_item.text
             try:
                 _ = regex_compile(config_mod_regex)
+                # TODO: add check for capturing group! Exactly one must be specified!
             except RegexError as re_err:
                 errors.append(str(re_err))
             #endregion Config mod regex
@@ -146,7 +148,7 @@ class _CompareMenu(ConsoleMenu):
 
         return result_dict
     
-    def show(self, filename: str, on_disk: dict, patch: dict) -> Tuple[dict, dict, dict]:
+    def show(self, filename: str, on_disk: dict, patch: dict, pcc: PatchCreationConfig) -> Tuple[dict, dict, dict]:
         self.subtitle = filename
 
         on_disk_flattend = self._flatten_dict_(on_disk)
@@ -169,6 +171,8 @@ class _CompareMenu(ConsoleMenu):
             if k not in on_disk_flattend:
                 key_map[k] = (REMOVE_D_IDENT, remove_d)
 
+        mod_patch_config = pcc.get_creation_state(filename, on_disk_flattend)
+
         self.items.clear()
 
         if len(key_map) < 1:
@@ -179,15 +183,25 @@ class _CompareMenu(ConsoleMenu):
             on_disk_value = 'REMOVE' if id_ == REMOVE_D_IDENT else str(on_disk_flattend[k])
             patch_value = 'IGNORE' if id_ == CREATE_D_IDENT else str(patch_flattend[k])
 
+            direction = Direction.CONFIG
+
+            new_value = True
+            if k in mod_patch_config:
+                direction = mod_patch_config[k]    
+                new_value = False
+
             self.append_item(DirectionSelectionItem(
                 key=k,
                 on_disk_value=on_disk_value,
-                default_value=Direction.CONFIG,
+                default_value=direction,
                 patch_value=patch_value,
-                menu=self
+                menu=self,
+                new_value=new_value,
             ))
             
         super().show(True)
+
+        user_choice: dict[str, Direction] = dict()
 
         for item in self.items:
             if not isinstance(item, DirectionSelectionItem):
@@ -197,7 +211,12 @@ class _CompareMenu(ConsoleMenu):
 
             id_, d = key_map[k]
 
-            match item.get_return():
+            direction = item.get_return()
+
+            user_choice[k] = direction
+
+
+            match direction:
                 case Direction.CONFIG:
                     if id_ == REMOVE_D_IDENT:
                         d[k] = {}
@@ -212,6 +231,8 @@ class _CompareMenu(ConsoleMenu):
         create_d_nested = self._unflatten_dict_(create_d)
         overwrite_d_nested = self._unflatten_dict_(overwrite_d)
         remove_d_nested = self._unflatten_dict_(remove_d)
+
+        pcc.add_mod_settings(filename, on_disk_flattend=on_disk_flattend, user_choice=user_choice)
 
         return create_d_nested, overwrite_d_nested, remove_d_nested
 
@@ -259,8 +280,8 @@ class ConsoleUserInterface():
     def create_PatcherConfig(self) -> PatcherConfig:
         return self._patcherConfig_creation_menu.show()
 
-    def compare(self, filename: str, on_disk: dict, patch: dict) -> Tuple[dict, dict, dict]:
-        return self._compare_menu.show(filename=filename, on_disk=on_disk, patch=patch)
+    def compare(self, filename: str, on_disk: dict, patch: dict, pcc: PatchCreationConfig) -> Tuple[dict, dict, dict]:
+        return self._compare_menu.show(filename=filename, on_disk=on_disk, patch=patch, pcc=pcc)
     
     def output_folder(self, folders: list[str]) -> str:
         return self._output_folder_selection_menu.show(folders=folders)
