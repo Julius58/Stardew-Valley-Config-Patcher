@@ -86,21 +86,11 @@ class DirectionSelectionItem(OptionalOptionItem):
     _NOT_SET_CHAR = 'Ignore'
     _FALSE_CHAR = 'Patch'
     _key: str
-    _new: bool
 
-    def __init__(self, key: str, on_disk_value: str, patch_value: str, default_value: Direction = Direction.IGNORE, menu: ConsoleMenu | None = None, menu_char: str | None = None, new_value: bool = True) -> None:
-        super().__init__(f'{key}:\n\t-Config Value: {on_disk_value}\n\t-Patch Value: {patch_value}', menu=menu, should_exit=False, menu_char=menu_char)
+    def __init__(self, key: str, on_disk_value: str, patch_value: str, default_value: Direction = Direction.IGNORE, menu: ConsoleMenu | None = None, menu_char: str | None = None) -> None:
+        super().__init__(f'{key}:\nConfig Value: {on_disk_value}\nPatch Value: {patch_value}', menu=menu, should_exit=False, menu_char=menu_char)
         self._key = key
         self._value = default_value.value
-        self._new = new_value
-
-    def get_checkbox(self) -> str:
-        chkbox = super().get_checkbox()
-
-        if self._new:
-            chkbox = "* %s" % chkbox
-
-        return chkbox
 
     def get_return(self) -> Direction:
         return Direction.from_value(self._value)

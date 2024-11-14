@@ -3,7 +3,6 @@ from os.path import join as path_join
 from os.path import relpath
 
 from lib.config import PatcherConfig
-from lib.creation_config import PatchCreationConfig
 from lib.patch import Patch, PatchFile, load_patches
 from lib.ui.console import ConsoleUserInterface
 
@@ -20,7 +19,7 @@ def _scan_for_configs_(configs_folder: str) -> list[str]:
 
     return configs
 
-def create_patch_file(configs_folder: str, config: PatcherConfig, cui: ConsoleUserInterface, pcc: PatchCreationConfig):
+def create_patch_file(configs_folder: str, config: PatcherConfig, cui: ConsoleUserInterface):
     patches = load_patches(config)
     patch_version = list(sorted(patches.keys()))[-1] + 1 if len(patches) > 0 else 0
 
@@ -44,7 +43,8 @@ def create_patch_file(configs_folder: str, config: PatcherConfig, cui: ConsoleUs
 
     for config_path, old_patches in old_patches_map.items():
         rel_config_path = relpath(config_path, configs_folder)
-        patch = Patch.new_patch(config_path=config_path, old_patches=old_patches, rel_path=rel_config_path, cui=cui, pcc=pcc)
+
+        patch = Patch.new_patch(config_path=config_path, old_patches=old_patches, rel_path=rel_config_path, cui=cui)
         if patch is not None:
             new_patches[rel_config_path] = patch
 
