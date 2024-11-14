@@ -9,60 +9,19 @@ from os.path import exists as path_exists
 from os.path import isfile, dirname
 from os.path import join as path_join
 from re import compile as regex_compile
-from typing import Any, Tuple
+from typing import Any
 
 from lib.config import PatcherConfig
 from lib.ui.console import ConsoleUserInterface
 
 PATCH_FOLDER_NAME = 'Patches'
 
+class ExpectedError(Exception):
+    pass
+
 def PATCH_FOLDER(config: PatcherConfig) -> str:
     return path_join(config.stardew_valley, PATCH_FOLDER_NAME)
     
-def _config_diff_(config: dict, patch: dict) -> Tuple[dict, dict, dict]:
-    #region Diff
-    def diff(config: dict, patch: dict) -> Tuple[dict | None, dict | None, dict | None]:
-        create_on_missing, overwrite, remove = dict(), dict(), dict()
-
-        for key, config_value in config.items():
-            if key not in patch: # Create on missing
-                create_on_missing[key] = config_value
-            else:
-                patch_value = patch[key]
-                if type(config_value) != type(patch_value): # New config structure
-                    overwrite[key] = config_value
-                else:
-                    if isinstance(config_value, dict): # Recursive scan
-                        con, o , r = diff(config_value, patch_value)
-                        # Update dictionaries
-                        if con is not None:
-                            create_on_missing[key] = con
-                        if o is not None:
-                            overwrite[key] = o
-                        if r is not None:
-                            remove[key] = r
-                    else:
-                        if not config_value.__eq__(patch_value): # Overwrite Value
-                            overwrite[key] = config_value
-
-        # Check for removed key-value pairs
-        for key in set(patch.keys()).difference(set(config.keys())):
-            remove[key] = {}
-        
-        return create_on_missing if len(create_on_missing) > 0 else None, overwrite if len(overwrite) > 0 else None, remove if len(remove) > 0 else None
-    #endregion Diff
-    
-    con, o, r = diff(config, patch)
-
-    if not isinstance(con, dict):
-        con = {}
-    if not isinstance(o, dict):
-        o = {}
-    if not isinstance(r, dict):
-        r = {}
-
-    return con, o, r
-
 @dataclass(init=False)
 class Patch():
     create_on_missing: str
@@ -201,7 +160,7 @@ class PatchFile(dict[str, Patch]):
     
     def __init__(self, filename: str, config: PatcherConfig):
         if not (match := self.FILENAME_REGEX.match(filename)):
-            raise ValueError(f'Patch file must be of pattern "{self.FILENAME_PATTERN}", put got "{filename}" instead.')
+            raise ExpectedError(f'Patch file must be of pattern "{self.FILENAME_PATTERN}", put got "{filename}" instead.')
         
         filepath = path_join(PATCH_FOLDER(config), filename)
         assert isfile(filepath)
@@ -237,11 +196,21 @@ class PatchFile(dict[str, Patch]):
 
 def load_patches(config: PatcherConfig) -> dict[int, PatchFile]:
     patchfiles: dict[int, PatchFile] = {}
-    for item in listdir(PATCH_FOLDER(config)):
+    folder = PATCH_FOLDER(config)
+    for item in listdir(folder):
+        path = path_join(folder, item)
+        
+        if not isfile(path):
+            continue
+
         try:
             pf = PatchFile(item, config)
             patchfiles[pf.version] = pf
+        except ExpectedError: # Ingore this error type
+            pass
         except Exception as e:
-            print(e)
+            print(f"Error for {item}: {e}")
+            raise RuntimeError(item, e)
+            
 
     return patchfiles
