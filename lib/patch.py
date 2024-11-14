@@ -12,6 +12,7 @@ from re import compile as regex_compile
 from typing import Any
 
 from lib.config import PatcherConfig
+from lib.creation_config import PatchCreationConfig
 from lib.ui.console import ConsoleUserInterface
 
 PATCH_FOLDER_NAME = 'Patches'
@@ -59,7 +60,7 @@ class Patch():
         )
 
     @classmethod
-    def new_patch(cls, config_path: str, old_patches: list['Patch'], rel_path: str, cui: ConsoleUserInterface) -> 'Patch | None':
+    def new_patch(cls, config_path: str, old_patches: list['Patch'], rel_path: str, cui: ConsoleUserInterface, pcc: PatchCreationConfig) -> 'Patch | None':
         patched_config = {}
 
         for patch in old_patches:
@@ -71,7 +72,7 @@ class Patch():
         with open(config_path, 'r') as f:
             on_disk_config = json_load(f)
 
-        create_on_missing, overwrite, remove = cui.compare(rel_path, on_disk=on_disk_config, patch=patched_config)
+        create_on_missing, overwrite, remove = cui.compare(rel_path, on_disk=on_disk_config, patch=patched_config, pcc=pcc)
 
         if len(create_on_missing) == 0 and len(overwrite) == 0 and len(remove) == 0:
             return None
